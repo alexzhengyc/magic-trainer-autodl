@@ -3,7 +3,7 @@ configs = [
 
     ## maximal input
     {
-        "dir_name": "chenweiting-512-10-Lion-hassan",
+        "dir_name": "x1",
         "train_data": "test_train",
         "reg_data": "test_reg",
         "resolution": 512,
@@ -33,10 +33,10 @@ configs = [
     # ,
     # ## minimal input
     ,{
-        "dir_name": "chenweiting-512-10-Dad-hassan",
-        "train_data": "test_train",
-        "reg_data": "test_reg",
-        "train_repeats": 10,
+        "dir_name": "x2",
+        "train_data": "",
+        "reg_data": "",
+        "train_repeats": 1,
         "reg_repeats": 1,
         "prompts": [
             "1 chenweiting man in white shirt",

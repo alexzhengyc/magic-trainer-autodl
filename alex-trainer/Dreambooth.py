@@ -61,8 +61,6 @@ class Dreambooth():
 
         self.repo_dir = os.path.join(self.root_dir, "kohya-trainer")
         self.training_dir = os.path.join(self.output_dir, self.dir_name)
-        self.train_data = os.path.join(self.dataset_dir, self.train_data)
-        self.reg_data = os.path.join(self.dataset_dir, self.reg_data)
         self.train_data_dir = os.path.join(self.training_dir, "train_data")
         self.reg_data_dir = os.path.join(self.training_dir, "reg_data")
         self.config_dir = os.path.join(self.training_dir, "config")
@@ -84,9 +82,11 @@ class Dreambooth():
             ]:
             os.makedirs(dir, exist_ok=True)
 
-        if self.train_data != self.dataset_dir:
+        if self.train_data != "":
+            self.train_data = os.path.join(self.dataset_dir, self.train_data)
             shutil.copytree(self.train_data, self.train_data_dir, dirs_exist_ok=True)
-        if self.reg_data != self.dataset_dir:
+        if self.reg_data != "":
+            self.reg_data = os.path.join(self.dataset_dir, self.reg_data)
             shutil.copytree(self.reg_data, self.reg_data_dir, dirs_exist_ok=True)
         if not os.path.exists(self.accelerate_config):
             write_basic_config(save_location=self.accelerate_config)
