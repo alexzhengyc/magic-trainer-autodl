@@ -1,2 +1,2 @@
 # alex-trainer
-a light but powerful trainer for both LoRA and Dreambooth 
+a light-weight but powerful trainer for both LoRA and Dreambooth 
