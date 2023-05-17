@@ -1,4 +1,4 @@
-# SD-trainer-autodl
+# magic-trainer-autodl
 Autodl version of the SD-trainer
 
 1. 如果是tmp里没有模型，cp autodl-fs/models -r autodl-tmp
