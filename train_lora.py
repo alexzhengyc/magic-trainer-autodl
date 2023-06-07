@@ -16,6 +16,7 @@ configs = [
         "train_repeats": 5,
         "reg_repeats": 1,
         "num_epochs": 1,
+        "save_every_n_epochs": 1,
         "network_dim": 128,
         "network_alpha": 64,
         "train_batch_size": 4,
