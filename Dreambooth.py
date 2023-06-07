@@ -20,9 +20,9 @@ class Dreambooth():
         self.dir_name = kwargs.get("dir_name", "default")
         self.train_data = kwargs.get("train_data", "")
         self.reg_data = kwargs.get("reg_data", "")
-        self.sd_path = kwargs.get("sd_path", "/root/autodl-tmp/models/VAE/vae-ft-mse-840000-ema-pruned.ckpt")
+        self.sd_path = kwargs.get("sd_path", "/root/autodl-tmp/models/Stable-diffusion/v1-5-pruned-emaonly.safetensors")
         self.v2 = kwargs.get("v2", False)
-        self.vae_path = kwargs.get("vae", "/root/autodl-tmp/models/VAE/vae-ft-mse-840000-ema-pruned.safetensors")        
+        self.vae_path = kwargs.get("vae_path", "/root/autodl-tmp/models/VAE/vae-ft-mse-840000-ema-pruned.ckpt")        
         self.instance_token = kwargs.get("instance_token", "")
         self.class_token = kwargs.get("class_token", "")
         self.train_repeats = kwargs.get("train_repeats", 10)
@@ -228,7 +228,7 @@ class Dreambooth():
                 "save_last_n_epochs": None,
                 "save_state": self.save_state,
                 "save_last_n_epochs_state": None,
-                "resume": self.resume_path if self.resume_path else None,
+                # "resume": self.resume_path if self.resume_path else None,
                 "train_batch_size": self.train_batch_size,
                 "max_token_length": 225,
                 "mem_eff_attn": False,

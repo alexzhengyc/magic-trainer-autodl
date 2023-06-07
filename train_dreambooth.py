@@ -4,11 +4,13 @@ configs = [
     ## maximal input
     {
         "dir_name": "chenweiting-512-200-8bit-hassan",
-        "train_data": "test_train",
-        "reg_data": "test_reg",
+        "train_data": "test1",                   ## 将数据集放在 autodl-tmp/dataset下， 填cwt则表示instance dir为 autodl-tmp/dataset/cwt
+        "reg_data": "",                          ## 将数据集放在 autodl-tmp/dataset下， 填man则表示class dir为 autodl-tmp/dataset/man  
+        "reg_data": "",
         "resolution": 512,
         "v2" : False,
-        "sd_path": "/root/autodl-tmp/models/Stable-diffusion/hassanblend14.safetensors",
+        # "sd_path": "/root/autodl-tmp/models/Stable-diffusion/HassanBlend1.4_Safe.safetensors",
+        "sd_path": "/root/autodl-tmp/models/Stable-diffusion/v1-5-pruned-emaonly.safetensors",
         "instance_token": "chenweiting man", 
         "class_token": "man",
         "train_repeats": 10,
@@ -27,20 +29,6 @@ configs = [
         "images_per_prompt": 1,
         "save_n_epoch_ratio" : 0.5,
     }
-    # ,
-    ## minimal input
-    {
-        "dir_name": "chenweiting-512-10-Ada-hassan",
-        "train_data": "test_train",
-        "reg_data": "test_reg",
-        "train_repeats": 10,
-        "reg_repeats": 1,
-        "prompts": [
-            "1 chenweiting man in white shirt",
-            "1 chenweiting man in black jacket",
-        ],
-
-    },
 ] 
 
 
