@@ -1,6 +1,5 @@
-#!/usr/bin/env python
-# coding: utf-8
 import os
+import argparse
 import sys
 import shutil
 import random
@@ -13,16 +12,16 @@ import torch
 import subprocess
 from accelerate.utils import write_basic_config
 
-# define class Dreambooth
-class Lora():
+
+class Lora:
     def __init__(self, **kwargs):
-        
-        self.dir_name = kwargs.get("dir_name", "default")
+        self.lora_name = kwargs.get("lora_name", "default")
         self.train_data = kwargs.get("train_data", "")
         self.reg_data = kwargs.get("reg_data", "")
-        self.sd_path = kwargs.get("sd_path", "/root/autodl-tmp/models/Stable-diffusion/v1-5-pruned-emaonly.safetensors")
-        self.v2 = kwargs.get("v2", False)
-        self.vae_path = kwargs.get("vae", "/root/autodl-tmp/models/VAE/vae-ft-mse-840000-ema-pruned.ckpt")        
+        self.sd_model = kwargs.get("sd_model", "")
+        self.extra_sd_path = kwargs.get("extra_sd_path", None)
+        self.vae = kwargs.get("vae", "")
+        self.v2 = kwargs.get("v2_model", False)
         self.instance_token = kwargs.get("instance_token", "")
         self.class_token = kwargs.get("class_token", "")
         self.train_repeats = kwargs.get("train_repeats", 10)
@@ -33,45 +32,52 @@ class Lora():
         self.train_unet = kwargs.get("train_unet", True)
         self.train_text_encoder = kwargs.get("train_text_encoder", True)
         self.unet_lr = kwargs.get("unet_lr", 1.0)
-        self.text_encoder_lr = kwargs.get("text_encoder_lr", self.unet_lr/2)
-        self.prompts = kwargs.get("prompts", None)
+        self.text_encoder_lr = kwargs.get("text_encoder_lr", self.unet_lr / 2)
+        self.prompts = kwargs.get("sample_prompts", None)
         self.images_per_prompt = kwargs.get("images_per_prompt", 1)
         self.optimizer_type = kwargs.get("optimizer_type", "DAdaptation")
         self.prior_loss_weight = kwargs.get("prior_loss_weight", 1.0)
         self.resolution = kwargs.get("resolution", 512)
         self.save_every_n_epochs = kwargs.get("save_every_n_epochs")
         self.sample_n_epoch_ratio = kwargs.get("sample_n_epoch_ratio")
-        self.train_batch_size = kwargs.get("train_batch_size", 4)
+        self.train_batch_size = kwargs.get("train_batch_size", 2)
+        self.lowram = kwargs.get("lowram", False)
         self.lr_scheduler = kwargs.get("lr_scheduler", "polynomial")
         self.flip_aug = kwargs.get("flip_aug", False)
 
-        self.project_name = self.dir_name
-        self.root_dir = "/root/magic-trainer-autodl"
-        self.output_dir = "/root/autodl-tmp/training"
-        self.dataset_dir = "/root/autodl-tmp/dataset"
-        self.save_model_dir = "/root/autodl-tmp/models/Lora"
 
-        self.pre = "masterpiece, best quality" 
-        self.negative = "lowres, blurry" 
-        self.sampler = "k_dpm_2"  # @param ["ddim", "pndm", "lms", "euler", "euler_a", "heun", "dpm_2", "dpm_2_a", "dpmsolver","dpmsolver++", "dpmsingle", "k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a"]
-        self.scale = 7
-        self.steps = 28  # @param {type: "slider", min: 1, max: 100}
-        self.width = 512  # @param {type: "integer"}
-        self.height = 512  # @param {type: "integer"}
+        ## TODO: change to dir in stable-diffusion-webui
+        self.project_name = self.lora_name
+        kohya_dir = os.path.dirname(os.path.realpath(__file__))
+        magic_trainer_dir = os.path.dirname(kohya_dir)
+        extensions_dir = os.path.dirname(magic_trainer_dir)
+        stable_diffusion_dir = os.path.dirname(extensions_dir)
+        self.output_dir = os.path.join(stable_diffusion_dir, "output")
+        self.save_model_dir = os.path.join(stable_diffusion_dir, "models/Lora")
+        
+        #*************************************************
+
+        if self.extra_sd_path is None or self.extra_sd_path == "":
+            self.sd_path = self.sd_model
+        else:
+            self.sd_path = self.extra_sd_path
+        if self.vae == "" or self.vae=="None":
+            self.vae = None
         self.keep_tokens = 0
         self.caption_extension = ".txt"
-        self.lowram = False
         self.v_parameterization = False
 
         self.caption_dropout_rate = 0
         self.caption_dropout_every_n_epochs = 0
 
-        self.repo_dir = os.path.join(self.root_dir, "kohya_ss_revised")
-        self.training_dir = os.path.join(self.output_dir, self.dir_name)
+        self.repo_dir = os.path.dirname(__file__)
+        self.training_dir = os.path.join(self.output_dir, self.lora_name)
         self.train_data_dir = os.path.join(self.training_dir, "train_data")
         self.reg_data_dir = os.path.join(self.training_dir, "reg_data")
         self.config_dir = os.path.join(self.training_dir, "config")
-        self.accelerate_config = os.path.join(self.repo_dir, "accelerate_config/config.yaml")
+        self.accelerate_config = os.path.join(
+            self.repo_dir, "accelerate_config/config.yaml"
+        )
         self.tools_dir = os.path.join(self.repo_dir, "tools")
         self.finetune_dir = os.path.join(self.repo_dir, "finetune")
         self.sample_dir = os.path.join(self.training_dir, "sample")
@@ -82,20 +88,18 @@ class Lora():
             self.train_data_dir,
             self.reg_data_dir,
             self.config_dir,
-            self.output_dir, 
+            self.output_dir,
             self.sample_dir,
-            ]:
+        ]:
             os.makedirs(dir, exist_ok=True)
 
         if self.train_data != "":
-            self.train_data = os.path.join(self.dataset_dir, self.train_data)
             shutil.copytree(self.train_data, self.train_data_dir, dirs_exist_ok=True)
         if self.reg_data != "":
-            self.reg_data = os.path.join(self.dataset_dir, self.reg_data)
-            shutil.copytree(self.reg_data, self.reg_data_dir, dirs_exist_ok=True)    
+            shutil.copytree(self.reg_data, self.reg_data_dir, dirs_exist_ok=True)
+
         if not os.path.exists(self.accelerate_config):
             write_basic_config(save_location=self.accelerate_config)
-
 
         test = os.listdir(self.train_data_dir)
         # @markdown This section will delete unnecessary files and unsupported media such as `.mp4`, `.webm`, and `.gif`.
@@ -119,23 +123,32 @@ class Lora():
                 print(f"Deleting file {item} from {self.train_data_dir}")
                 os.remove(os.path.join(self.train_data_dir, item))
 
+
     def train(self):
-        
         lr_scheduler_num_cycles = 0  # @param {'type':'number'}
-        lr_scheduler_power = 1 
-        lr_warmup_steps = 0 
+        lr_scheduler_power = 1
+        lr_warmup_steps = 0
         noise_offset = 0.0  # @param {type:"number"}
 
-        # sample 
+        # sample
         enable_sample_prompt = True
+        scale = 7  # @param {type: "slider", min: 1, max: 40}
+        sampler = "k_dpm_2"  # @param ["ddim", "pndm", "lms", "euler", "euler_a", "heun", "dpm_2", "dpm_2_a", "dpmsolver","dpmsolver++", "dpmsingle", "k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a"]
+        steps = 28  # @param {type: "slider", min: 1, max: 100}
+        # precision = "fp16"  # @param ["fp16", "bf16"] {allow-input: false}
+        width = 512  # @param {type: "integer"}
+        height = 512  # @param {type: "integer"}
+        pre = ""
+        negative = "lowres, blurry"
+
+        #
         mixed_precision = "fp16"  # @param ["no","fp16","bf16"]
-        save_precision = "fp16"  # @param ["float", "fp16", "bf16"] 
+        save_precision = "fp16"  # @param ["float", "fp16", "bf16"]
         save_model_as = "safetensors"  # @param ["ckpt", "safetensors", "diffusers", "diffusers_safetensors"] {allow-input: false}
         max_token_length = 225  # @param {type:"number"}
         gradient_checkpointing = False  # @param {type:"boolean"}
         gradient_accumulation_steps = 1  # @param {type:"number"}
         seed = -1  # @param {type:"number"}
-
 
 
         config = {
@@ -152,9 +165,15 @@ class Lora():
                     "resolution": self.resolution,
                     "min_bucket_reso": 320 if self.resolution > 640 else 256,
                     "max_bucket_reso": 1280 if self.resolution > 640 else 1024,
-                    "caption_dropout_rate": self.caption_dropout_rate if self.caption_extension == ".caption" else 0,
-                    "caption_tag_dropout_rate": self.caption_dropout_rate if self.caption_extension == ".txt" else 0,
-                    "caption_tag_dropout_rate": self.caption_dropout_rate if self.caption_extension == ".combined" else 0,
+                    "caption_dropout_rate": self.caption_dropout_rate
+                    if self.caption_extension == ".caption"
+                    else 0,
+                    "caption_tag_dropout_rate": self.caption_dropout_rate
+                    if self.caption_extension == ".txt"
+                    else 0,
+                    "caption_tag_dropout_rate": self.caption_dropout_rate
+                    if self.caption_extension == ".combined"
+                    else 0,
                     "caption_dropout_every_n_epochs": self.caption_dropout_every_n_epochs,
                     "flip_aug": self.flip_aug,
                     "color_aug": False,
@@ -244,21 +263,29 @@ class Lora():
         config = {
             "model_arguments": {
                 "v2": self.v2,
-                "v_parameterization": self.v_parameterization if self.v2 and self.v_parameterization else False,
+                "v_parameterization": self.v_parameterization
+                if self.v2 and self.v_parameterization
+                else False,
                 "pretrained_model_name_or_path": self.sd_path,
-                "vae": self.vae_path,
+                "vae": self.vae,
             },
             "additional_network_arguments": {
                 "no_metadata": False,
                 "unet_lr": float(self.unet_lr) if self.train_unet else None,
-                "text_encoder_lr": float(self.text_encoder_lr) if self.train_text_encoder else None,
+                "text_encoder_lr": float(self.text_encoder_lr)
+                if self.train_text_encoder
+                else None,
                 "network_weights": network_weight,
                 "network_module": network_module,
                 "network_dim": self.network_dim,
                 "network_alpha": self.network_alpha,
                 "network_args": network_args,
-                "network_train_unet_only": True if self.train_unet and not self.train_text_encoder else False,
-                "network_train_text_encoder_only": True if self.train_text_encoder and not self.train_unet else False,
+                "network_train_unet_only": True
+                if self.train_unet and not self.train_text_encoder
+                else False,
+                "network_train_text_encoder_only": True
+                if self.train_text_encoder and not self.train_unet
+                else False,
                 "training_comment": None,
             },
             "optimizer_arguments": {
@@ -268,8 +295,12 @@ class Lora():
                 "optimizer_args": eval(optimizer_args) if optimizer_args else None,
                 "lr_scheduler": self.lr_scheduler,
                 "lr_warmup_steps": lr_warmup_steps,
-                "lr_scheduler_num_cycles": lr_scheduler_num_cycles if self.lr_scheduler == "cosine_with_restarts" else None,
-                "lr_scheduler_power": lr_scheduler_power if self.lr_scheduler == "polynomial" else None,
+                "lr_scheduler_num_cycles": lr_scheduler_num_cycles
+                if self.lr_scheduler == "cosine_with_restarts"
+                else None,
+                "lr_scheduler_power": lr_scheduler_power
+                if self.lr_scheduler == "polynomial"
+                else None,
             },
             "dataset_arguments": {
                 "cache_latents": True,
@@ -279,8 +310,12 @@ class Lora():
                 "output_dir": self.save_model_dir,
                 "output_name": self.project_name,
                 "save_precision": save_precision,
-                "save_every_n_epochs": self.save_every_n_epochs if self.save_every_n_epochs else None,
-                "save_n_epoch_ratio": self.save_n_epochs_ratio if self.save_n_epochs_ratio else None,
+                "save_every_n_epochs": self.save_every_n_epochs
+                if self.save_every_n_epochs
+                else None,
+                "save_n_epoch_ratio": self.sample_n_epoch_ratio
+                if self.sample_n_epoch_ratio
+                else None,
                 "save_last_n_epochs": None,
                 "save_state": None,
                 "save_last_n_epochs_state": None,
@@ -305,7 +340,7 @@ class Lora():
                 "sample_dir": self.sample_dir,
                 "sample_every_n_steps": None,
                 "sample_every_n_epochs": 1 if enable_sample_prompt else 999999,
-                "sample_sampler": self.sampler,
+                "sample_sampler": sampler,
                 # "images_per_prompt": images_per_prompt,
             },
             "dreambooth_arguments": {
@@ -334,9 +369,14 @@ class Lora():
         write_file(config_path, config_str)
 
         final_prompts = []
+        self.prompts = self.prompts.split(",")
+            
         for prompt in self.prompts:
             final_prompts.append(
-                f"{self.pre}, {prompt} --n {self.negative} --w {self.width} --h {self.height} --l {self.scale} --s {self.steps}" if self.pre else f"{prompt} --n {self.negative} --w {self.width} --h {self.height} --l {self.scale} --s {self.steps}"
+                # f"{self.instance_token}, {pre}, {prompt} --n {negative} --w {width} --h {height} --l {scale} --s {steps}"
+                # if self.add_token_to_caption
+                # f"{pre}, {prompt} --n {negative} --w {width} --h {height} --l {scale} --s {steps}"
+                prompt
             )
         with open(prompt_path, "w") as file:
             # Write each string to the file on a new line
@@ -347,9 +387,78 @@ class Lora():
         sample_prompt = os.path.join(self.config_dir, "sample_prompt.txt")
         config_file = os.path.join(self.config_dir, "config_file.toml")
         dataset_config = os.path.join(self.config_dir, "dataset_config.toml")
-        
+
         os.chdir(self.repo_dir)
-        command = f'''accelerate launch --config_file={self.accelerate_config} --num_cpu_threads_per_process=1 train_network.py --sample_prompts={sample_prompt} --dataset_config={dataset_config} --config_file={config_file}'''
+        command = f"""accelerate launch --config_file={self.accelerate_config} --num_cpu_threads_per_process=1 train_network.py --sample_prompts={sample_prompt} --dataset_config={dataset_config} --config_file={config_file}"""
+
         subprocess.run(command, shell=True, check=True)
 
 
+def setup_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--save_model_as",
+        type=str,
+        default="safetensors",
+        choices=["ckpt", "safetensors"],
+        help="lora model save type",
+    )
+    # parser.add_argument("--prepare", action="store_true", help="")
+    parser.add_argument("--lora_name", type=str, default="x1", help="")
+    parser.add_argument("--train_data", type=str, default="", help="absolute path to your instance images and prompts")
+    parser.add_argument("--reg_data", type=str, default="", help="absolute path to your class images and prompts")
+    parser.add_argument("--flip_aug", action="store_true", default=False, help="flip the images to augment the data")
+    parser.add_argument("--resolution", type=int, default=512, help="image resolution", choices=[512, 768])
+    parser.add_argument("--v2_model", action="store_true", help="if training a sd 2.0/2.1 model")
+    parser.add_argument(
+        "--sd_model",
+        type=str,
+        default="",
+        help="",
+    )
+    parser.add_argument(
+        "--extra_sd_path",
+        type=str,
+        default="",
+        help="",
+    )
+
+    parser.add_argument(
+        "--vae",
+        type=str,
+        default="",
+        help="",
+    )
+    parser.add_argument("--instance_token", type=str, default="zwx", help="")
+    parser.add_argument("--class_token", type=str, default="person", help="")
+    parser.add_argument("--train_repeats", type=int, default=10, help="")
+    parser.add_argument("--reg_repeats", type=int, default=1, help="")
+    parser.add_argument("--num_epochs", type=int, default=1, help="")
+    parser.add_argument("--network_dim", type=int, default=64, help="")
+    parser.add_argument("--network_alpha", type=int, default=32, help="")
+    parser.add_argument("--train_batch_size", type=int, default=1, help="")
+    parser.add_argument("--lowram", action="store_true", default=False, help="")
+    parser.add_argument("--optimizer_type", type=str, default="Lion",choices=["AdamW", "AdamW8bit", "Lion", "SGDNesterov", "SGDNesterov8bit", "AdaFactor", "DAdaptation"], help="")
+    parser.add_argument("--unet_lr", type=float, default=1e-5, help="")
+    parser.add_argument("--text_encoder_lr", type=float, default=0.5e-5, help="")
+    parser.add_argument("--lr_scheduler", type=str, default="polynomial",choices=["linear", "cosine", "cosine_with_restarts", "polynomial", "constant", "constant_with_warmup", "adafactor"], help="")
+    parser.add_argument("--prior_loss_weight", type=float, default=1.0, help="")
+    parser.add_argument(
+        "--sample_prompts",
+        type=str,
+        default="1 zwx person in white shirt, 1 zwx person in black jacket",
+        help="input all your prompts here, separated by ','",
+    )
+    parser.add_argument("--images_per_prompt", type=int, default=1, help="")
+    parser.add_argument("--sample_n_epoch_ratio", type=float, default=1, help="")
+
+    return parser
+
+
+if __name__ == "__main__":
+    parser = setup_parser()
+    args = parser.parse_args()
+    config = vars(args)
+    model = Lora(**config)
+    model.train()

@@ -1,0 +1,9 @@
+diffusers<=0.14.0
+tensorflow<=2.8
+toml
+fairscale
+albumentations
+voluptuous
+lion_pytorch
+bitsandbytes>=0.38.1
+dadaptation

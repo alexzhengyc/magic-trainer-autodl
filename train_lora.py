@@ -1,4 +1,5 @@
 from Lora import Lora
+
 configs = [
 
     ## maximal input
@@ -66,7 +67,4 @@ configs = [
 
 for config in configs:
     model = Lora(**config)
-
-    # model.prepare(data_anotation = "blip")  # @param ["none", "waifu", "blip", "combined"]
-    
     model.train()

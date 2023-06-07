@@ -1,8 +1,0 @@
-diffusers==0.14.0
-toml
-fairscale
-albumentations
-voluptuous
-lion_pytorch
-bitsandbytes
-pip install git+https://github.com/facebookresearch/dadaptation.git

@@ -47,7 +47,4 @@ configs = [
 
 for config in configs:
     model = Dreambooth(**config)
-
-    # model.prepare(data_anotation = "blip") # @param ["none", "waifu", "blip", "combined"]
-
     model.train()
