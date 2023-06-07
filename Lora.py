@@ -280,7 +280,7 @@ class Lora():
                 "output_name": self.project_name,
                 "save_precision": save_precision,
                 "save_every_n_epochs": self.save_every_n_epochs if self.save_every_n_epochs else None,
-                "save_n_epoch_ratio": self.save_n_epochs_ratio if self.save_n_epochs_ratio else None,
+                "save_n_epoch_ratio": self.sample_n_epoch_ratio if self.sample_n_epoch_ratio else None,
                 "save_last_n_epochs": None,
                 "save_state": None,
                 "save_last_n_epochs_state": None,
