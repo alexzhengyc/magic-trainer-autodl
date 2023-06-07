@@ -13,7 +13,7 @@ configs = [
         "sd_path": "/root/autodl-tmp/models/Stable-diffusion/v1-5-pruned-emaonly.safetensors",
         "instance_token": "chenweiting man",     ## 用于自动生成标题时使用
         "class_token": "man",                    ## class image 统一的标题
-        "train_repeats": 10,
+        "train_repeats": 5,
         "reg_repeats": 1,
         "num_epochs": 1,
         "network_dim": 128,

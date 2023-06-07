@@ -11,13 +11,13 @@ configs = [
         "v2" : False,
         # "sd_path": "/root/autodl-tmp/models/Stable-diffusion/HassanBlend1.4_Safe.safetensors",
         "sd_path": "/root/autodl-tmp/models/Stable-diffusion/v1-5-pruned-emaonly.safetensors",
-        "instance_token": "chenweiting man", 
+        "instance_token": "chenweiting", 
         "class_token": "man",
         "train_repeats": 10,
         "reg_repeats": 1,
         "max_train_steps" : 200,
         "train_batch_size": 1,
-        "optimizer_type": "AdamW8bit", # @param ["AdamW", "AdamW8bit", "Lion", "SGDNesterov", "SGDNesterov8bit", "DAdaptation", "AdaFactor"]
+        "optimizer_type": "Lion8bit", # @param ["AdamW", "AdamW8bit", "Lion", "Lion8bit", "SGDNesterov", "SGDNesterov8bit", "DAdaptation", "AdaFactor"]
         "learning_rate" : 1e-6,
         "lr_scheduler" : "polynomial",  #@param ["linear", "cosine", "cosine_with_restarts", "polynomial", "constant", "constant_with_warmup", "adafactor"]
         "prior_loss_weight": 1.0,
