@@ -44,9 +44,10 @@ class Dreambooth():
 
         self.project_name = self.dir_name
         self.root_dir = "/root/magic-trainer-autodl"
-        self.output_dir = "/root/autodl-tmp/training"
+        self.output_dir = "/root/autodl-tmp/magic-trainer-outputs"
         self.dataset_dir = "/root/autodl-tmp/dataset"
-        self.save_model_dir = "/root/autodl-tmp/models/Stable-diffusion"
+        self.save_model_dir = f"/root/autodl-tmp/magic-trainer-outputs/{self.dir_name}"
+
         self.pre = "masterpiece, best quality" 
         self.negative = "lowres, blurry" 
         self.sampler = "k_dpm_2"  # @param ["ddim", "pndm", "lms", "euler", "euler_a", "heun", "dpm_2", "dpm_2_a", "dpmsolver","dpmsolver++", "dpmsingle", "k_lms", "k_euler", "k_euler_a", "k_dpm_2", "k_dpm_2_a"]
